@@ -103,7 +103,7 @@ public class RLInterface extends JFrame {
     }
     
     public static void main(String[] args) {
-        String s = "20";
+        String s = "1000";
         boolean b = false;
         if (args.length == 0) {}
         else {s = args[1]; b = true;}

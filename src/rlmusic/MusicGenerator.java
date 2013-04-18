@@ -6,7 +6,7 @@ public class MusicGenerator extends Thread {
     
     private StateSpace states;
     private int episodeRepeat;
-    private int episodeNumber = 5;
+    private int episodeNumber = 10;
     private MusicCritic mc;
     private short nextNote = -1;
     private ArrayList<Short> notes;
@@ -25,7 +25,7 @@ public class MusicGenerator extends Thread {
         ws.setEpisodeRepeat(episodeRepeat);
         mp.setGenerator(this);
         states = new StateSpace(mc,ws,Math.pow(0.01,(1.0/(float)(episodeRepeat))));
-        states.setRoot(new Node(null,(byte) 0,0.05f));
+        states.setRoot(new Node(null,(byte) 12,0.05f));
         notes = new ArrayList<>();
         time = System.currentTimeMillis();
         generation();
@@ -34,25 +34,21 @@ public class MusicGenerator extends Thread {
     
     public void generation() {
         for (int n = 0; n < episodeNumber; n++) {
-            //System.out.println("new episode");
                 states.incrementEpisodeCount();
-                mc.backUp();
-                mc.setBackUpNote();
                 for (int i = 0; i < episodeRepeat; i++) {
-                    //System.out.println("new repeat");
+                    mc.newEpisode();
                     states.episode(episodeRepeat);
-                    mc.loadBackUp();
                     states.decrementTemp();
                 }
                 byte[] greedy = states.getGreedy();
                 for (int j = 0; j < 10; j++) {
                     float finalreward = mc.assignUtility(greedy[j]);
                     ws.setReward(n*10 + j, 0, finalreward);
-                    //System.out.println("action: " + greedy[j]);
                     ws.repaint();
                     nextNote = mc.getCurrentNote();
                     accessNote(nextNote,true);
                 }
+                mc.backUp();
                 System.out.println("Time elapsed: " + Math.round((System.currentTimeMillis()-time)/1000) + " seconds");
                 Iterator it = states.getNodes().iterator();
                 Node nextRoot = null;

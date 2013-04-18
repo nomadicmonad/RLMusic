@@ -9,10 +9,12 @@ import javax.sound.midi.Receiver;
 import javax.sound.midi.Sequencer;
 import javax.sound.midi.Synthesizer;
 import java.util.ArrayList;
+import java.util.Random;
 
 public class MusicPlayer extends Thread {
-    private short currentNote = 60;
+    private short currentNote = -5;
     private int tempo = 1000;
+    
     private Receiver synthRcvr;
     private MusicGenerator mg;
     //private ArrayList<Byte> noteCache;
@@ -41,9 +43,9 @@ public class MusicPlayer extends Thread {
                     if (mg != null && (next = mg.accessNote((short)0,false)) == -1) continue;
                     try {
                         //dont interrupt if continuation
-                        if (currentNote != -2) synthRcvr.send(new ShortMessage(ShortMessage.NOTE_OFF,0,currentNote,70),-1);
+                        //if (currentNote != -5) synthRcvr.send(new ShortMessage(ShortMessage.NOTE_OFF,0,currentNote,70),-1);
                         System.out.println("Current MIDI note: " + currentNote);
-                        synthRcvr.send(new ShortMessage(ShortMessage.NOTE_ON,0,currentNote,70),-1);
+                        if (currentNote != -5) synthRcvr.send(new ShortMessage(ShortMessage.NOTE_ON,0,currentNote,70),-1);
                     } catch (InvalidMidiDataException e) {System.out.println(e);}
                     if (next == -3) {} //-3 == take a longer break;
                     else {

@@ -8,7 +8,7 @@ public class StateSpace {
     public Node root;
     public ArrayList<Node> nodes;
     public Node currentNode;
-    private float lr = 0.1f;//learning rate
+    private float lr = 0.4f;//learning rate
     private float df = 0.9f; //discount
     private MusicCritic mc;
     private double temp = 1;
@@ -70,6 +70,7 @@ public class StateSpace {
             qLearn();
             count++;
         }
+        mc.newEpisode();
     }
     
     public void expandNode(Node n) {
@@ -101,7 +102,9 @@ public class StateSpace {
         boolean done = false;
         r = new Random();
         float prob = r.nextFloat();
+        //System.out.println("action");
         for (byte i = 0; i < 25; i++) {
+            //System.out.println(currentNode.getChild(i).getValue() + " value");
             if (done) {continue;}
             double numerator = Math.pow(Math.E,currentNode.getChild(i).getValue()/temp);
             double denominator = 0;
@@ -117,11 +120,12 @@ public class StateSpace {
     }
     
     public void qLearn() {
-        Node next = getMaxReward(currentNode);
+        Node next = getMaxQ(currentNode);
         float reward = mc.assignUtility(currentNode.getNoteValue());
         rewardcount++;
         currentNode.setReward(reward);
         float q = currentNode.getValue() + currentNode.geteTrace()*lr*(reward + df*(next.getValue() - currentNode.getValue()));
+        //System.out.println("the q: " + q + "  " + currentNode.getValue() + "  " + reward);
         currentNode.setValue(q);
     }   
     
@@ -163,18 +167,12 @@ public class StateSpace {
                 counter = (counter+1)%25;
             }
         }
-        float testingValue = 0;
-        float rewardCount = 0;
         for (int i = 0; i < n.getChildren().length; i++) //chose node with highest value
             {
-                testingValue++;
                 if (n.getChild(i).getReward() > iterNode.getReward()) {
                     iterNode = n.getChild(i);
-                    rewardCount++;
                 }
             }
-        if (rewardCount/testingValue > 0.8) {doneHere = true; System.out.println("Saturation reached with episode repetition of: " + theEpisodeRepeat); System.exit(0);
-        }
         return iterNode;
     }
     

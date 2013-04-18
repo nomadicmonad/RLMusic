@@ -40,8 +40,9 @@ public class RLInterfaceTest {
         System.out.println("main saturation testing for Q-learning");
         String[] args = new String[2];
         assertEquals(1,1);
-        long end = System.currentTimeMillis() + 30000;
-        args[1] = "100";
+        long end = System.currentTimeMillis() + 300000;
+        args[1] = "50";
+        RLInterface.main(args);
         RLInterface.main(args);
         while (System.currentTimeMillis() < end) {}
         end = System.currentTimeMillis() + 30000;
