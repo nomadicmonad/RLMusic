@@ -38,7 +38,7 @@ public class Node {
     public void setValue(float value) {
         this.value = value;
     }
-    
+    public boolean isChild(int i) {return ((children.length > i) && (children[i] != null));}
     public Node getChild(int i) { return children[i];}
     
     public void putChild(Node child) {

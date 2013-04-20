@@ -1,7 +1,6 @@
 package rlmusic;
 import java.util.ArrayList;
-import java.util.Iterator;
-
+import gnu.trove.iterator.TIntIterator;
 public class MusicGenerator extends Thread {
     
     private StateSpace states;
@@ -13,6 +12,8 @@ public class MusicGenerator extends Thread {
     public boolean access = false;
     private Workspace ws;
     private long time;
+    private int episodeLength = 8;
+    private int noteCounter = 0;
     //array of groups with utilities?        
     @Override
     public void run() {
@@ -25,7 +26,8 @@ public class MusicGenerator extends Thread {
         ws.setEpisodeRepeat(episodeRepeat);
         mp.setGenerator(this);
         states = new StateSpace(mc,ws,Math.pow(0.01,(1.0/(float)(episodeRepeat))));
-        states.setRoot(new Node(null,(byte) 12,0.05f));
+        //states.setRoot(new Node(null,(byte) 12,0.05f));
+        states.setRootID(0);
         notes = new ArrayList<>();
         time = System.currentTimeMillis();
         generation();
@@ -40,8 +42,8 @@ public class MusicGenerator extends Thread {
                     states.episode(episodeRepeat);
                     states.decrementTemp();
                 }
-                byte[] greedy = states.getGreedy();
-                for (int j = 0; j < 10; j++) {
+                byte[] greedy = states.getGreedy2();
+                for (int j = 0; j < episodeLength; j++) {
                     float finalreward = mc.assignUtility(greedy[j]);
                     ws.setReward(n*10 + j, 0, finalreward);
                     ws.repaint();
@@ -50,27 +52,28 @@ public class MusicGenerator extends Thread {
                 }
                 mc.backUp();
                 System.out.println("Time elapsed: " + Math.round((System.currentTimeMillis()-time)/1000) + " seconds");
-                Iterator it = states.getNodes().iterator();
-                Node nextRoot = null;
+                TIntIterator it = states.getNodeIDs().iterator();
+                int nextRoot = -1;
                 while (it.hasNext()) {
-                    Node nextNode = (Node) it.next();
-                    if (nextNode.getNoteValue() == greedy[9] && nextNode.getParent().getNoteValue() == greedy[8]) {
-                        nextRoot = nextNode;
+                    int next = it.next();
+                    if (states.getNodeNoteValues().get(next) == greedy[episodeLength - 1] && states.getNodeNoteValues().get(states.getParents().get(next)) == greedy[episodeLength - 2]) {
+                        nextRoot = next;
                     }
                 }
                 states.resetTemp();
-                states.setRoot(nextRoot);
+                states.setRootID(nextRoot);
             }
         }
     
     
     public synchronized short accessNote(short s, boolean add) {
         if (add) {
+            noteCounter++;
             notes.add(s);
             return -1;
         }
         else {
-        if (!notes.isEmpty()) {return notes.remove(0);}
+        if (!notes.isEmpty() && noteCounter > 0) {return notes.remove(0);}
         else {return -1;}}
     }
 }

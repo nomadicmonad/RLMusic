@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Random;
 import java.util.Arrays;
 import java.util.Collections;
+import gnu.trove.*;
+import gnu.trove.list.array.TByteArrayList;
 
 public class MusicCritic extends Thread {
     
@@ -11,34 +13,57 @@ public class MusicCritic extends Thread {
     private MusicPlayer mp;
     private short currentNote;
     private Workspace ws;
-    private int stateNumber = 2;
+    private int stateNumber = 1;
     private double[][] transitions;
     private double[][] outputMatrix;
     private double[][] forwards;
     private double[][] backwards;
     private int episodeRepeat;
-    private ArrayList<Byte> emissions;
-    
-    private ArrayList<Byte> backupEmissions;
+    private TByteArrayList emissions;
+    private int noteNumber = 25;
+    private TByteArrayList backupEmissions;
     private double[][] backupTransitions;
     private double[][] backupOutputMatrix;
     private short backUpNote;
     private boolean firstPass = true;
+    private double convergence = 0.02;
+    private double learningRate = 0.3;
+    private double estimateTransition;
+    private double estimateOutput;
+    
+    
+    private double sum;
+    private float utility;
+    private byte[] baumInput;
+    private double norm;
+    private float extra = 1.5f;// to make it even more extreme
+    private double cauchy;
+    private float dissonance;
+    private double[] likelihood;
+    private double forwardSum;
+    private double mostLikely;
+    private double difference;
+    private double[] transitionSums;
+    private double[][] forwardProbs;
+    private double[][] backupForwardProbs;
+    private double[][] backwardProbs;
     
     public boolean getDone() {return done;}
     
     public MusicCritic(MusicPlayer mp, Workspace ws,int episodeRepeat) { this.mp = mp; this.ws = ws; this.episodeRepeat = episodeRepeat;}
     @Override
     public void run() {
-        backupEmissions = new ArrayList<Byte>();
-        emissions = new ArrayList<Byte>();
+        forwardProbs = new double[1][1];
+        backupForwardProbs = new double[1][1];
+        backupEmissions = new TByteArrayList();
+        emissions = new TByteArrayList();
         Random r = new Random();
         backUpNote = currentNote = (short) (r.nextInt(43) + 42);
         transitions = new double[stateNumber][stateNumber];
         backupTransitions = new double[stateNumber][stateNumber];
+        double[] gaussians = new double[stateNumber];
         for (int i = 0; i < stateNumber; i++) {
-            double[] gaussians = new double[stateNumber];
-            double sum = 0;
+            sum = 0;
             for (int j = 0; j < stateNumber; j++) {
                 gaussians[j] = r.nextGaussian();
                 sum += Math.abs(gaussians[j]);
@@ -47,16 +72,16 @@ public class MusicCritic extends Thread {
                 backupTransitions[i][j] = transitions[i][j] = gaussians[j]/(sum*2) + 0.5;
             }
         }
-        outputMatrix = new double[stateNumber][25];
-        backupOutputMatrix = new double[stateNumber][25];
+        outputMatrix = new double[stateNumber][noteNumber];
+        backupOutputMatrix = new double[stateNumber][noteNumber];
+        gaussians = new double[noteNumber];
         for (int i = 0; i < stateNumber; i++) {
-            double[] gaussians = new double[25];
-            double sum = 0;
-            for (int j = 0; j < 25; j++) {
+            sum = 0;
+            for (int j = 0; j < noteNumber; j++) {
                 gaussians[j] = r.nextGaussian();
                 sum += Math.abs(gaussians[j]);
             }
-            for (int j = 0; j < 25; j++) {
+            for (int j = 0; j < noteNumber; j++) {
                 backupOutputMatrix[i][j] = outputMatrix[i][j] = gaussians[j]/(sum*2) + 0.5;
             }
         }
@@ -68,10 +93,12 @@ public class MusicCritic extends Thread {
     public void newEpisode () {
                 firstPass = true;
                 currentNote = backUpNote;
-                emissions = new ArrayList();
-                for (Byte b : backupEmissions) {
-                    emissions.add(b.byteValue());
-                }
+                emissions = new TByteArrayList();
+                emissions.addAll(backupEmissions);
+            forwardProbs = new double[backupForwardProbs.length][backupForwardProbs[0].length];
+            for (int i = 0; i < backupForwardProbs.length; i++) {
+                System.arraycopy(backupForwardProbs[i], 0, forwardProbs[i], 0, backupForwardProbs[0].length);
+            }
             for (int i = 0; i < backupTransitions.length; i++) {
                 System.arraycopy(backupTransitions[i], 0, transitions[i], 0, backupTransitions[0].length);
             }
@@ -82,10 +109,12 @@ public class MusicCritic extends Thread {
     
     public void backUp() {
             backUpNote = currentNote;
-                backupEmissions = new ArrayList();
-                for (Byte b : emissions) {
-                    backupEmissions.add(b.byteValue());
-                }
+            backupEmissions = new TByteArrayList();
+            backupEmissions.addAll(emissions);
+            backupForwardProbs = new double[forwardProbs.length][forwardProbs[0].length];
+            for (int i = 0; i < forwardProbs.length; i++) {
+                System.arraycopy(forwardProbs[i], 0, backupForwardProbs[i], 0, forwardProbs[0].length);
+            }
             for (int i = 0; i < transitions.length; i++) {
                 System.arraycopy(transitions[i], 0, backupTransitions[i], 0, transitions[0].length);
             }
@@ -98,10 +127,9 @@ public class MusicCritic extends Thread {
         emissions.add(emission);
         currentNote += (emission - 12);
         
-        double norm = currentNote/18.0 - 3;
-        float extra = 1.5f;// to make it even more extreme
-        double cauchy = (1/(extra*(Math.PI*(2*norm*norm + 0.5))));
-        float dissonance = 1;
+        norm = currentNote/18.0 - 3;
+        cauchy = (1/(extra*(Math.PI*(2*norm*norm + 0.5))));
+        dissonance = 1;
         switch (emission) {
             case 0: dissonance = 0; break;
             case 1: dissonance = 0.058f; break;
@@ -129,28 +157,31 @@ public class MusicCritic extends Thread {
             case 23: dissonance = 0.058f; break;
             case 24: dissonance = 0f; break;
         }
-        double likelihood = 0;
-        double forwardSum = 0;
-        float utility = 0;
+        likelihood = new double[noteNumber];
+        forwardSum = 0;
+        mostLikely = 0;
+        transitionSums = new double[noteNumber];
         if (!firstPass) {
-            for (int i = 0; i < stateNumber; i++) {
-                forwardSum += forwards[i][emissions.size() -2];
-            }
-            for (int i = 0; i < stateNumber; i++) {
-                double transitionSum = 0;
-                for (int j = 0; j < stateNumber; j++) {
-                    transitionSum += transitions[i][j]*outputMatrix[j][emission];
+            for (int n = 0; n < noteNumber; n++) {
+                for (int i = 0; i < stateNumber; i++) {
+                    forwardSum += forwards[i][emissions.size() -2];
                 }
-                likelihood += (forwards[i][emissions.size() -2]/forwardSum)*transitionSum;
-                
+                for (int i = 0; i < stateNumber; i++) {
+                        for (int j = 0; j < stateNumber; j++) {
+                            transitionSums[n] += transitions[i][j]*outputMatrix[j][n];
+                        }
+                    likelihood[n] += (forwards[i][emissions.size() -2]/forwardSum)*transitionSums[n];
+
+                }
             }
         }
-            likelihood = (Double.isNaN(likelihood))?0:likelihood;
-
-            Byte[] baumInput = new Byte[emissions.size()];
-            baumInput = emissions.toArray(baumInput);
+            for (double d: likelihood) {mostLikely = (d > mostLikely) ? d : mostLikely;}
+            likelihood[emission] = (Double.isNaN(likelihood[emission]))?0:likelihood[emission];
+            difference = (likelihood[emission] > 0.1) ? mostLikely - likelihood[emission] : likelihood[emission];
+            baumInput = new byte[emissions.size()];
+            baumInput = emissions.toArray();
             baumWelch(baumInput);
-            utility = (float) (likelihood*(1-(dissonance*10))*cauchy);
+            utility = (float) (difference*(1-(dissonance*10))*cauchy);
             if (currentNote > 108) {currentNote = 108; utility = -1;}
             if (currentNote < 21) {currentNote = 21; utility = -1;}
         
@@ -158,17 +189,13 @@ public class MusicCritic extends Thread {
         return utility;
     }
    
-    public void baumWelch(Byte[] outputs) {
+    public void baumWelch(byte[] outputs) {
              
         forwards = forward(outputs);
         backwards = backward(outputs);
-        double convergence = 0.01;
-        double learningRate = 0.2;
         for (int g = 0; g < stateNumber; g++) {
             for (int i = 0; i < stateNumber; i++) {
-                for (int n = 0; n < 25; n++) {
-                    double estimateTransition;
-                    double estimateOutput;
+                for (int n = 0; n < noteNumber; n++) {
                     do {
                         estimateTransition = eTransition(outputs,g,i,n);
                         estimateOutput = eOutput(outputs,g,n);
@@ -181,7 +208,7 @@ public class MusicCritic extends Thread {
             }
         }
         //normalize transition probabilities
-        double sum = 0;
+        sum = 0;
         for (int g = 0; g < stateNumber; g++) {
             for (int i = 0; i < stateNumber; i++) { 
                 sum += transitions[g][i];
@@ -194,18 +221,18 @@ public class MusicCritic extends Thread {
             sum = 0;
         }
         for (int i = 0; i < stateNumber; i++) { 
-            for (int n = 0; n < 25; n++) {
+            for (int n = 0; n < noteNumber; n++) {
                 sum+= outputMatrix[i][n];
             }
             if (sum == 0) { sum = 1;}
-            for (int n = 0; n < 25; n++) {
+            for (int n = 0; n < noteNumber; n++) {
                 outputMatrix[i][n]= outputMatrix[i][n]/sum;
             }
             sum = 0;
         }
     
     }
-    public double eTransition(Byte[] outputs,int i, int j, int k) {
+    public double eTransition(byte[] outputs,int i, int j, int k) {
         double sum = 0;
         for (int x = 0; x < outputs.length; x++) {
             sum += transition(outputs,i,j,k,x,false);
@@ -220,7 +247,7 @@ public class MusicCritic extends Thread {
         returnValue = (Double.isInfinite(sum/sum2)) ? 1 : returnValue; 
         return returnValue;
     }
-    public double eOutput(Byte[] outputs,int j, int k) {
+    public double eOutput(byte[] outputs,int j, int k) {
         double sum = 0;
         for (int x = 0; x < outputs.length; x++) {
             for (int n = 0; n < stateNumber; n++) {
@@ -230,7 +257,7 @@ public class MusicCritic extends Thread {
         double sum2 = 0;
         for (int x = 0; x < outputs.length; x++) {
             for (int n = 0; n < stateNumber; n++) {
-                for (int h = 0; h < 25; h++) {
+                for (int h = 0; h < noteNumber; h++) {
                     sum2 += transition(outputs,j,n,h,x,false);
                 }
             }
@@ -239,7 +266,7 @@ public class MusicCritic extends Thread {
         returnValue = (Double.isInfinite(sum/sum2)) ? 1 : returnValue; 
         return returnValue;
     } 
-    public double transition(Byte[] outputs,int i, int j, int k, int t,boolean match) {
+    public double transition(byte[] outputs,int i, int j, int k, int t,boolean match) {
         double result;
         if (match) {
             if (outputs[t] == k) {
@@ -258,23 +285,33 @@ public class MusicCritic extends Thread {
         return result;
     }
     
-    public double[][] forward(Byte[] outputs) {
-        double[][] forwardProbs = new double[stateNumber][outputs.length];
-        for(int x = 0; x < outputs.length; x++) {
-            double newProb = 0;
-            for (int n = 0; n < stateNumber; n++) {
-                for (int j = 0; j < stateNumber; j++) {
-                    if (x == 0) {newProb += transitions[j][n]; continue;}
-                    newProb += forwardProbs[j][x-1]*transitions[j][n];
-                }
-                forwardProbs[n][x] = newProb*outputMatrix[n][outputs[x]];
+    public double[][] forward(byte[] outputs) {
+        double[][] oldForward = new double[0][0];
+        if (outputs.length > 1) {
+            oldForward = new double[stateNumber][outputs.length - 1];
+            for (int i = 0; i < stateNumber; i++) {
+                System.arraycopy(forwardProbs[i], 0, oldForward[i], 0, forwardProbs[0].length);
             }
         }
+        forwardProbs = new double[stateNumber][outputs.length];
+        if (outputs.length > 1 ) {
+            for (int i = 0; i < stateNumber; i++) {
+                System.arraycopy(oldForward[i], 0, forwardProbs[i], 0, oldForward[0].length);
+            }
+        }
+        double newProb = 0;
+            for (int n = 0; n < stateNumber; n++) {
+                for (int j = 0; j < stateNumber; j++) {
+                    if (outputs.length == 1) {newProb += transitions[j][n]; continue;}
+                    newProb += forwardProbs[j][outputs.length-2]*transitions[j][n];
+                }
+                forwardProbs[n][outputs.length - 1] = newProb*outputMatrix[n][outputs[outputs.length-1]];
+            }
         return forwardProbs;
     }
     
-    public double[][] backward(Byte[] outputs) {
-        double[][] backwardProbs = new double[stateNumber][outputs.length];
+    public double[][] backward(byte[] outputs) {
+        backwardProbs = new double[stateNumber][outputs.length];
         for(int x = outputs.length - 1; x > -1; x--) {
             double newProb = 0;
             for (int n = 0; n < stateNumber; n++) {

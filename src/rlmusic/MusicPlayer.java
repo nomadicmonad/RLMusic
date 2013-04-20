@@ -1,15 +1,8 @@
 package rlmusic;
 
-import javax.sound.midi.MidiSystem;
-import javax.sound.midi.MidiDevice;
-import javax.sound.midi.MidiUnavailableException;
-import javax.sound.midi.ShortMessage;
-import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.Receiver;
-import javax.sound.midi.Sequencer;
-import javax.sound.midi.Synthesizer;
-import java.util.ArrayList;
-import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.sound.midi.*;
 
 public class MusicPlayer extends Thread {
     private short currentNote = -5;
@@ -17,53 +10,73 @@ public class MusicPlayer extends Thread {
     
     private Receiver synthRcvr;
     private MusicGenerator mg;
-    //private ArrayList<Byte> noteCache;
-
+    private Track track;
+    private MidiEvent event,event2,event3;
+    private ShortMessage message,message2,message3;
+    private Sequence sequence;
+    private int speed = 1;
+    
     @Override
     public void run() {
-        //noteCache = new ArrayList<>();
-        startUp();
+        try {
+            startUp();
+        } catch (InvalidMidiDataException ex) {
+        }
     }
 
-    public void startUp() {
+    public void startUp() throws InvalidMidiDataException {
         try {
             MidiDevice midiDevice = MidiSystem.getMidiDevice(MidiSystem.getMidiDeviceInfo()[3]);
             if (!midiDevice.isOpen()) {
-                Sequencer seq = MidiSystem.getSequencer();
-                Synthesizer synth = MidiSystem.getSynthesizer();
-                synthRcvr = synth.getReceiver();
-                midiDevice.open();
-                synth.open();
-                seq.open();
-                boolean runIt = true;
-                int i = 0;
-                short next = -1;
-                while (runIt) {
-                    i++;
-                    if (mg != null && (next = mg.accessNote((short)0,false)) == -1) continue;
-                    try {
-                        //dont interrupt if continuation
-                        //if (currentNote != -5) synthRcvr.send(new ShortMessage(ShortMessage.NOTE_OFF,0,currentNote,70),-1);
-                        System.out.println("Current MIDI note: " + currentNote);
-                        if (currentNote != -5) synthRcvr.send(new ShortMessage(ShortMessage.NOTE_ON,0,currentNote,70),-1);
-                    } catch (InvalidMidiDataException e) {System.out.println(e);}
-                    if (next == -3) {} //-3 == take a longer break;
-                    else {
-                        if (next == -1) {currentNote = 60;}
-                        else {
-                            currentNote = next;
-                        }
-                    }
-                    if (seq.isRunning()) { 
-                    } else {
+                Synthesizer synth;
+                try (Sequencer seq = MidiSystem.getSequencer()) {
+                    synth = MidiSystem.getSynthesizer();
+                    synthRcvr = synth.getReceiver();
+                    midiDevice.open();
+                    synth.open();
+                    seq.open();
+                    sequence = new Sequence(Sequence.PPQ,speed);
+                    track = sequence.createTrack();
+                    seq.setSequence(sequence);
+                    DurationPattern durationPattern = new DurationPattern();
+                    boolean runIt = true;
+                    int i = 0;
+                    int dur = 1;
+                    short next = -1;
+                    while (runIt) {
+                        if (mg != null && (next = mg.accessNote((short)0,false)) == -1) continue;
                         try {
-                            Thread.sleep(tempo);
-                        } catch (InterruptedException e) {System.out.println(e);}
-                        if (i == 1000) {
+                            System.out.println("Current MIDI note: " + currentNote);
+                            if (currentNote != -5) {
+                                //i++;
+                                message = new ShortMessage(ShortMessage.NOTE_ON,0,currentNote,70);
+                                message2 = new ShortMessage(ShortMessage.NOTE_ON,1,currentNote+5,70);
+                                message3 = new ShortMessage(ShortMessage.NOTE_ON,2,currentNote-3,70);
+                                dur = durationPattern.consume();
+                                if (dur == -1) {
+                                    durationPattern = new DurationPattern();
+                                    dur = durationPattern.consume();
+                                }
+                                i+=(8/dur);
+                                event = new MidiEvent(message,i*speed);
+                                event2 = new MidiEvent(message2,i*speed);
+                                event3 = new MidiEvent(message3,i*speed);
+                                track.add(event);  
+                                track.add(event2);
+                                track.add(event3);
+                                seq.start();
+                                //synthRcvr.send(new ShortMessage(ShortMessage.NOTE_ON,0,currentNote,70),-1);
+                            }
+                        } catch (InvalidMidiDataException e) {System.out.println(e);}
+                        currentNote = next;
+                        if (seq.isRunning()) { 
+                        } else {
+                           /* try {
+                                Thread.sleep(tempo);
+                            } catch (InterruptedException e) {System.out.println(e);}*/
                         }
                     }
                 }
-                seq.close();
                 synth.close();
                 midiDevice.close();
                 System.exit(0);
@@ -71,9 +84,4 @@ public class MusicPlayer extends Thread {
         } catch (MidiUnavailableException e) {System.out.println(e);}
     }
     public void setGenerator(MusicGenerator mg) {this.mg = mg;}
-    /*public void addNote(byte note) {
-        noteCache.add(note);
-    }*/
-    
-    /*public int getCacheSize() {return noteCache.size();}*/
 }
