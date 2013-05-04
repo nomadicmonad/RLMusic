@@ -4,8 +4,10 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowListener;
+import java.awt.event.WindowEvent;
 
-public class RLInterface extends JFrame {
+public class RLInterface extends JFrame implements WindowListener {
     
     private JMenuBar menuBar;
     private JMenu menu, submenu;
@@ -18,8 +20,8 @@ public class RLInterface extends JFrame {
     private MusicCritic music;
     private byte[] notes;
     
-    
     public RLInterface(final int episodeRepeat,boolean press) {
+        addWindowListener(this);
         mp = new MusicPlayer();
         setSize(800,600);
         setBounds(300,300,800,600);
@@ -27,6 +29,12 @@ public class RLInterface extends JFrame {
         menuBar = new JMenuBar();
         contentPane = new JPanel(new BorderLayout());
         JButton button = new JButton("Start Generation");
+        
+        JButton button2 = new JButton("Start Playing");
+        
+        JButton button3 = new JButton("Start Recording");
+        JButton button4 = new JButton("Stop Recording");
+        JButton button5 = new JButton("Stop Playing");
         button.addActionListener(new ActionListener() {
  
             public void actionPerformed(ActionEvent e)
@@ -37,14 +45,50 @@ public class RLInterface extends JFrame {
                 ws.setCritic(music);
                 ws.repaint();
             }
-        });      
+        });    
+        button2.addActionListener(new ActionListener() {
+ 
+            public void actionPerformed(ActionEvent e)
+            {
+                mp.allow();
+            }
+        }); 
+        button3.addActionListener(new ActionListener() {
+ 
+            public void actionPerformed(ActionEvent e)
+            {
+                mp.record();
+            }
+        }); 
+        button4.addActionListener(new ActionListener() {
+ 
+            public void actionPerformed(ActionEvent e)
+            {
+                mp.stopRecord();
+            }
+        }); 
+        button5.addActionListener(new ActionListener() {
+ 
+            public void actionPerformed(ActionEvent e)
+            {
+                mp.stopPlaying();
+            }
+        }); 
         setContentPane(contentPane);
         ws = new Workspace();
         ws.setLayout(null);
         contentPane.add(menuBar,BorderLayout.NORTH);
         contentPane.add(ws,BorderLayout.EAST);
         ws.add(button);
-        button.setBounds(300,360,200,20);
+        ws.add(button2);
+        ws.add(button3);
+        ws.add(button4);
+        ws.add(button5);
+        button.setBounds(200,320,200,20);
+        button2.setBounds(100,360,200,20);
+        button3.setBounds(100,340,200,20);
+        button4.setBounds(300,340,200,20);
+        button5.setBounds(300,360,200,20);
         menu = new JMenu("File");
         menuBar.add(menu);
         menuItem = new JMenuItem("New",
@@ -98,12 +142,23 @@ public class RLInterface extends JFrame {
         if (press) {
         for(ActionListener a: button.getActionListeners()) {
            a.actionPerformed(new ActionEvent(button,1001,""));
-        }}
+        }
+        for(ActionListener a: button2.getActionListeners()) {
+           a.actionPerformed(new ActionEvent(button2,1001,""));
+        }
+        }
     
     }
+    public void windowOpened(WindowEvent e) {}
+    public void windowClosing(WindowEvent e) {if (music!= null) music.stopANN();}
+    public void windowClosed(WindowEvent e) {}
+    public void windowDeactivated(WindowEvent e) {}
+    public void windowActivated(WindowEvent e) {}
+    public void windowDeiconified(WindowEvent e) {}
+    public void windowIconified(WindowEvent e) {}
     
     public static void main(String[] args) {
-        String s = "500";
+        String s = "50";
         boolean b = false;
         if (args.length == 0) {}
         else {s = args[1]; b = true;}
