@@ -1,12 +1,12 @@
 
 package rlmusic;
 
+import gnu.trove.iterator.TIntIterator;
+import gnu.trove.list.array.TIntArrayList;
 import java.util.ArrayList;
 import java.util.Random;
-import gnu.trove.list.array.TIntArrayList;
-import gnu.trove.iterator.TIntIterator;
 
-public class DurationPattern {
+public final class DurationPattern {
     
     private ArrayList<HuffNode> huffStack;
     private ArrayList<Integer[]> patterns;
@@ -89,9 +89,9 @@ public class DurationPattern {
                 }
                 HuffNode left = null;
                 HuffNode right = null;
-                int r = 0;
-                if (index1 != -1) {left = huffStack.remove(index1); if (index1 < index2 ) {r = 1;}}
-                if (index2 != -1 && index1 != index2) right = huffStack.remove(index2-r);
+                int r2 = 0;
+                if (index1 != -1) {left = huffStack.remove(index1); if (index1 < index2 ) {r2 = 1;}}
+                if (index2 != -1 && index1 != index2) right = huffStack.remove(index2-r2);
                 int nextWeight = (left != null) ? left.frequency : 0;
                 nextWeight += (right != null) ? right.frequency : 0;
                 huffStack.add(new HuffNode(-1,nextWeight,left,right));
@@ -109,7 +109,7 @@ public class DurationPattern {
         }
     }
     
-    public int getTotalBits(HuffNode huffNode, int depth) {
+    private int getTotalBits(HuffNode huffNode, int depth) {
         if (huffNode == null) {return 0;}
         if (huffNode.id == -1) {return getTotalBits(huffNode.leftChild, depth +1) + getTotalBits(huffNode.rightChild,depth +1);}
         else { return (huffNode.frequency * depth) + getTotalBits(huffNode.leftChild,depth +1) + getTotalBits(huffNode.rightChild,depth +1);}

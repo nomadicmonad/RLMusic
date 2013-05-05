@@ -4,16 +4,12 @@ package rlmusic;
 public class MusicCritic extends Thread {
     
     private boolean done = false;
-    private MusicPlayer mp;
     private short currentNote;
-    private Workspace ws;
-    private int episodeRepeat;
     private short backUpNote;
     private boolean firstPass = true;
     private float weight1 = 0.4f,weight2 = 0.4f,weight3 = 0.2f;
     private int minNote = 21;
     private int maxNote = 108;
-    
     private float utility;
     private int cacheSize = 20;
     private BaumWelch absolute,relative,directional;
@@ -23,7 +19,7 @@ public class MusicCritic extends Thread {
     
     public boolean getDone() {return done;}
     
-    public MusicCritic(MusicPlayer mp, Workspace ws,int episodeRepeat) { this.mp = mp; this.ws = ws; this.episodeRepeat = episodeRepeat;
+    public MusicCritic(MusicPlayer mp, Workspace ws,int episodeRepeat) {
     
         backUpNote = currentNote = (short) (60);
         
@@ -32,12 +28,28 @@ public class MusicCritic extends Thread {
         directional = new BaumWelch(currentNote,cacheSize,2,3);
         mg = new MusicGenerator(this,mp,ws,episodeRepeat);
     }
+    public MusicCritic() {}
     @Override
     public void run() {
         relative.start();
         absolute.start();
         directional.start();
         mg.start();
+    }
+    
+    public void runHumanTest(int currentNote, int[] notes) {
+        backUpNote = this.currentNote = (byte) currentNote;
+        relative = new BaumWelch(this.currentNote,cacheSize,0,25);
+        absolute = new BaumWelch(this.currentNote,cacheSize,1,12);
+        directional = new BaumWelch(this.currentNote,cacheSize,2,3);
+        relative.start();
+        absolute.start();
+        directional.start();
+        newEpisode();
+        for (int i: notes) {
+            System.out.println(assignUtility((byte)i,true,false));
+        }
+        
     }
     
     public short getCurrentNote() {return currentNote;}
@@ -62,15 +74,16 @@ public class MusicCritic extends Thread {
             backUpNote = currentNote;
     }
     
-    public float assignUtility(byte emission) {
+    public float assignUtility(byte emission,boolean print,boolean cauchy) {
         currentemission = emission;
         currentNote += (emission - 12);
         relativeReward = relative.assignUtility(emission);
-        absoluteReward = absolute.assignUtility((byte)((currentNote+3)%12));
+        absoluteReward = absolute.assignUtility((byte)((currentNote)%12));
         directionalReward = directional.assignUtility((byte)(Math.signum(emission-12)+1))/4.4f;
             float likelihood = absoluteReward*weight2 + directionalReward*weight3 + relativeReward*weight1;
-            utility = (float) (likelihood*(1-(getDissonance(emission)))*getCauchy((byte)0));
-        
+            utility = (float) (likelihood*(1-(getDissonance(emission)))*getCauch((byte)0));
+            if (!cauchy) utility = (likelihood*(1-(getDissonance(emission))));
+            if (print) System.out.println(likelihood + "  " + getDissonance(emission) + "  " + getCauch((byte) 0));
         if (firstPass) {utility = 0; firstPass = false;}
         if (currentNote > maxNote) {currentNote = (short) maxNote; utility = 0;}
         if (currentNote < minNote) {currentNote = (short) minNote; utility = 0;}
@@ -83,18 +96,19 @@ public class MusicCritic extends Thread {
         inputs[0] = relativeReward*weight1;
         inputs[1] = absoluteReward*weight2;
         inputs[2] = directionalReward*weight3;
-        inputs[3] = (1-(getDissonance(currentemission)*10));
-        inputs[4] = getCauchy((byte)0);
+        inputs[3] = (1-(getDissonance(currentemission)));
+        inputs[4] = (currentNote-64.5)/43.5;
         inputs[5] = (currentNote > maxNote) ? 1 : 0;
         inputs[6] = (currentNote < minNote) ? 1 : 0;
         return inputs;
     }
     
     
-    public double getCauchy(byte emission) {
-        double cauchy = 0;
-        double norm = (currentNote + emission - 21)/14.5 - 3;
-        Math.abs(cauchy = (1/Math.PI)*(0.319f/(norm*norm + 0.102f)));
+    public double getCauch(byte emission) {
+        double cauchy;
+        double norm = (currentNote + emission - 21)/7.25 - 1.5;
+        cauchy = ((1/Math.PI)*(0.319f/(norm*norm + 0.102f)));
+        
         return cauchy;
     }
     

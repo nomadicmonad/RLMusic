@@ -4,7 +4,7 @@ import gnu.trove.list.array.TDoubleArrayList;
 import java.io.*;
 import java.util.Random;
 
-public class NeuralNetwork {
+public final class NeuralNetwork {
     
     private Random r;
     private double output;
@@ -12,12 +12,13 @@ public class NeuralNetwork {
     private int numberOfHiddens;
     private TDoubleArrayList inputs;
     private TDoubleArrayList hiddens;
-    private TDoubleArrayList inputWeights; //real valued
-    private TDoubleArrayList hiddenWeights; //real valued
+    private TDoubleArrayList inputWeights;
+    private TDoubleArrayList hiddenWeights;
     private File mainfile;
     private ObjectOutputStream out;
     private ObjectInputStream in;
     private boolean closing = false;
+    private TDoubleArrayList error1s;
     
     public NeuralNetwork() {
         r = new Random();
@@ -54,25 +55,35 @@ public class NeuralNetwork {
     public void setInputs(TDoubleArrayList values) {
         inputs.remove(0, inputs.size());
         inputs.addAll(values);
-        numberOfHiddens = inputs.size()-1;
+        numberOfHiddens = 6;
         if (inputWeights.isEmpty()) {initializeInputWeights();}
         else if (hiddens.isEmpty()) {initializeHiddens();}
     }
     
     public void train(double reward) {
+        feedForward();
         backPropagate((reward-output)*output*(1-output));
         feedForward();
     }
     
     public void backPropagate(double value) {
+        error1s = new TDoubleArrayList();
         for (int i = 0; i < hiddenWeights.size(); i++) {
-            double newValue = learningRate*value*hiddens.get(i);
+            double error1 = value*hiddens.get(i);
+            double newValue = -learningRate*error1;
+            error1s.add(error1);
             hiddenWeights.set(i,hiddenWeights.get(i) + (newValue));
         }
+        
         int size = inputs.size();
         for (int i = 0; i < numberOfHiddens; i++) {
             for (int j = 0; j < size; j++) {
-                double newValue = learningRate*value*inputs.get(j);
+                double currentErrorSum = 0;
+                for (int n = 0; n < error1s.size(); n++) {
+                    currentErrorSum += error1s.get(n)*inputWeights.get(n*size + j);
+                }
+                double error2 = inputs.get(j)*(1-inputs.get(j))*(currentErrorSum);
+                double newValue = -learningRate*error2*inputs.get(j);
                 inputWeights.set(i*size + j,inputWeights.get(i*size + j) + (newValue));
             }
         }
@@ -85,6 +96,8 @@ public class NeuralNetwork {
                 for (int j = 0; j < size; j++) {
                     inputSum += inputs.get(j)*inputWeights.get(i*size + j);
                 }
+                if (Double.isNaN(inputSum)) System.err.println("ANN NaN error with inputSum, delete NN file");
+                if (inputSum == 0) {inputSum = 0.001;}
                 double unitOutput = 1.0/(1 + Math.pow(Math.E,-inputSum));
                 if (Double.isNaN(unitOutput)) System.err.println("ANN NaN error");
                 hiddens.set(i,unitOutput);
@@ -93,10 +106,12 @@ public class NeuralNetwork {
             for (int i = 0; i < numberOfHiddens; i++) {
                 hiddenSum += hiddens.get(i)*hiddenWeights.get(i);
             }
+            if (hiddenSum == 0) {hiddenSum = 0.001;}
             output = 1.0/(1 + Math.pow(Math.E,-hiddenSum));
     }
     
     public double predict() {
+        feedForward();
         return output;
     }
     

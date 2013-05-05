@@ -1,9 +1,9 @@
 
 package rlmusic;
 
-import java.util.ArrayList;
 import gnu.trove.list.array.TDoubleArrayList;
 import gnu.trove.list.array.TIntArrayList;
+import java.util.ArrayList;
 import java.util.Random;
 
 public class PatternTracking {

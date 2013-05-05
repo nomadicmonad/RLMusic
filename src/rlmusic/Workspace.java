@@ -1,14 +1,12 @@
 package rlmusic;
 
-import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.Rectangle2D;
-import java.awt.geom.Rectangle2D.Double;
-import java.util.Iterator;
 import java.util.TreeMap;
+import javax.swing.BorderFactory;
+import javax.swing.JPanel;
 
 public class Workspace extends JPanel {
-    private MusicCritic music;
     private TreeMap<Integer,float[]> mapping;
     private int episodeRepeat = 0;
     private float accumulatedReward = 0;
@@ -17,26 +15,24 @@ public class Workspace extends JPanel {
         setBorder(BorderFactory.createLineBorder(Color.black));
         mapping = new TreeMap<>();
     }
-    public void setCritic(MusicCritic music) {this.music = music;}
-    public void setEpisodeRepeat(int episodeRepeat) {this.episodeRepeat = episodeRepeat;};
+    public void setEpisodeRepeat(int episodeRepeat) {this.episodeRepeat = episodeRepeat;}
     
+    @Override
     public Dimension getPreferredSize() {
         return new Dimension(600,400);
     }
     
     public void setReward(int rewardcount, int episodeRepeatNum, float reward) {
-        float[] rewards = new float[episodeRepeat]; //30 repeats
+        float[] rewards = new float[episodeRepeat];
         accumulatedReward += reward;
         if (mapping.containsKey(rewardcount)) {rewards = (float[]) mapping.remove(rewardcount);}
         rewards[episodeRepeatNum] = reward;
         mapping.put(rewardcount,rewards);
     }
 
+    @Override
     public void paintComponent(Graphics g) {
         super.paintComponent(g);       
-
-        // Draw Text
-        
         g.drawString("Reinforcement Learning Music Program v-1.0",10,20);
         Graphics2D g2 = (Graphics2D) g;
         g2.setStroke(new BasicStroke(1.0f));

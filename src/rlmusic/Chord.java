@@ -1,9 +1,8 @@
-
 package rlmusic;
 
 import java.util.Random;
 
-public class Chord {
+public final class Chord {
     
     public int index2 = -1, index3 = -1;
     
@@ -23,7 +22,7 @@ public class Chord {
     }
     
     public float getDissonance(int steps) {
-        float dissonance = 1;
+        float dissonance;
         
         switch (steps) {
             case 1: dissonance =  0.06f; break;

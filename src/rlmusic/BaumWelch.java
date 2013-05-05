@@ -34,8 +34,8 @@ public class BaumWelch extends Thread {
     private double[][] forwardProbs;
     private double[][] backupForwardProbs;
     private double[][] backwardProbs;
-    private int startState = 0;
-    private int endState = stateNumber - 1;
+    private int startState;
+    private int endState;
     private int cacheSize = 20;
     private int recognitionMode;
     private double[] nextLikelihood;
@@ -43,12 +43,15 @@ public class BaumWelch extends Thread {
     public boolean getDone() {return done;}
     
     public BaumWelch(short note,int cache,int mode,int number) {
+        stateNumber = 2;
         backUpNote = currentNote = note;cacheSize = cache; recognitionMode = mode;numberOfEmissionValues = number;
         forwardProbs = new double[1][1];
         backupForwardProbs = new double[1][1];
         backupEmissions = new TByteArrayList();
         emissions = new TByteArrayList();
         Random r = new Random();
+        startState = 0;
+        endState = stateNumber-1;
         transitions = new double[stateNumber][stateNumber];
         backupTransitions = new double[stateNumber][stateNumber];
         double[] gaussians = new double[stateNumber];
@@ -79,7 +82,6 @@ public class BaumWelch extends Thread {
     
     @Override
     public void run() {
-        
     }
     
     public short getCurrentNote() {return currentNote;}
@@ -160,14 +162,10 @@ public class BaumWelch extends Thread {
                 }
             }
         }
-            double max = 0;
-            for (int n = 0; n < numberOfEmissionValues; n++) {
-                if (likelihood[n] > max) max = likelihood[n];
-            }
             baumInput = new byte[emissions.size()];
             baumInput = emissions.toArray();
             baumWelch(baumInput);
-            utility = (float) (Math.abs(likelihood[emission]-max));
+            utility = (float) (Math.abs(likelihood[emission]));
         
         if (firstPass) {utility = 0; firstPass = false;}
         return utility;
@@ -224,9 +222,9 @@ public class BaumWelch extends Thread {
         }
     }
     public double eTransition(byte[] outputs,int i, int j, int k) {
-        double sum = 0;
+        double sum1 = 0;
         for (int x = 0; x < outputs.length; x++) {
-            sum += transition(outputs,i,j,k,x,false);
+            sum1 += transition(outputs,i,j,k,x,false);
         }
         double sum2 = 0;
         for (int x = 0; x < outputs.length; x++) {
@@ -235,17 +233,17 @@ public class BaumWelch extends Thread {
             }
         }
         double returnValue;
-        if (sum == 0) {returnValue = 0;}
-        else {returnValue = sum/sum2;}
+        if (sum1 == 0) {returnValue = 0;}
+        else {returnValue = sum1/sum2;}
         return returnValue;
     }
     public double eOutput(byte[] outputs,int j, int k) {
-        double sum = 0;
+        double sum1 = 0;
         for (int x = 0; x < outputs.length; x++) {
             if (outputs[x] == (k)) {
                 
                 for (int n = 0; n < stateNumber; n++) {
-                    sum += transition(outputs,j,n,k,x,true);
+                    sum1 += transition(outputs,j,n,k,x,true);
                 }
             }
         }
@@ -258,8 +256,8 @@ public class BaumWelch extends Thread {
             }
         }
         double returnValue;
-        if (sum == 0) {returnValue = 0;}
-        else {returnValue = sum/sum2;}
+        if (sum1 == 0) {returnValue = 0;}
+        else {returnValue = sum1/sum2;}
         return returnValue;
     } 
     public double transition(byte[] outputs,int i, int j, int k, int t,boolean match) {
@@ -294,17 +292,16 @@ public class BaumWelch extends Thread {
                 if (len == 0 && n == startState) {forwardProbs[n][len] = 1;}
                 else if (len == 0 && n != startState) {forwardProbs[n][len] = 0;}
                 else {
-                    double forwardSum = 0;
+                    double forwardSum1 = 0;
                     for (int j = 0; j < stateNumber; j++) {
-                        forwardSum += forwardProbs[j][len-1];
+                        forwardSum1 += forwardProbs[j][len-1];
                     }
                     for (int j = 0; j < stateNumber; j++) {
                         double summation;
                         if (forwardProbs[j][len-1] == 0) {summation = 0;}
-                        else {summation = forwardProbs[j][len-1];}
+                        else {summation = forwardProbs[j][len-1]/forwardSum1;}
                         newProb += (summation)*transitions[j][n];
                     }
-                    forwardSum = 0;
                     forwardProbs[n][len] = newProb*outputMatrix[n][outputs[len-1]];
                     newProb = 0;
                 }
@@ -328,7 +325,7 @@ public class BaumWelch extends Thread {
                     for (int j = 0; j < stateNumber; j++) {
                         double summation;
                         if (backwardProbs[j][x+1] == 0) {summation = 0;}
-                        else {summation = backwardProbs[j][x+1];}
+                        else {summation = backwardProbs[j][x+1]/backwardSum;}
                         newProb += summation*transitions[n][j]*outputMatrix[j][outputs[x+1]];
                     }
                 }

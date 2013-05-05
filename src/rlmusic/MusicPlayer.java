@@ -1,10 +1,7 @@
 package rlmusic;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.sound.midi.*;
 import java.io.File;
-import java.net.URI;
+import javax.sound.midi.*;
 
 public class MusicPlayer extends Thread {
     
@@ -49,7 +46,7 @@ public class MusicPlayer extends Thread {
                     DurationPattern durationPattern = new DurationPattern();
                     boolean runIt = true;
                     int i = 0;
-                    int dur = 1;
+                    int dur;
                     short next = -1;
                     while (runIt) {
                         if (!isAllowed()) {if (hasBeenOpen){seq.close();} continue;}
@@ -57,8 +54,6 @@ public class MusicPlayer extends Thread {
                         else
                         { 
                             if (seq.isRecording() && !record) {
-                                //seq.stopRecording();
-                                //record = false;
                                 try {
                                     java.text.DateFormat dateFormat = new java.text.SimpleDateFormat("_MM_dd_HH_mm_ss");
                                     java.util.Calendar calendar = java.util.Calendar.getInstance();
@@ -80,7 +75,22 @@ public class MusicPlayer extends Thread {
                         if (mg != null && (next = mg.accessNote((short)0,false)) == -1) continue;
                         
                         try {
-                            System.out.println("Current MIDI note: " + currentNote);
+                            String noteName = "";
+                            switch (currentNote%12) {
+                                case 0: noteName = "C"; break;
+                                case 1: noteName = "C#"; break;
+                                case 2: noteName = "D"; break;
+                                case 3: noteName = "D#"; break;
+                                case 4: noteName = "E"; break;
+                                case 5: noteName = "F"; break;
+                                case 6: noteName = "F#"; break;
+                                case 7: noteName = "G"; break;
+                                case 8: noteName = "G"; break;
+                                case 9: noteName = "A"; break;
+                                case 10: noteName = "A#"; break;
+                                case 11: noteName = "B"; break;
+                            }
+                            System.out.println("Current MIDI note: " + noteName + " MIDI note number: " + currentNote);
                             if (currentNote != -5) {
                                 //i++;
                                 if (previousNote == -5) {previousNote = 0;}
@@ -104,7 +114,6 @@ public class MusicPlayer extends Thread {
                                 track.add(event2);
                                 track.add(event3);
                                 seq.start();
-                                //synthRcvr.send(new ShortMessage(ShortMessage.NOTE_ON,0,currentNote,70),-1);
                             }
                         } catch (InvalidMidiDataException e) {System.out.println(e);}
                         previousNote = currentNote;
