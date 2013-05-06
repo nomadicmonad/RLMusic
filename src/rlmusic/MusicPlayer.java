@@ -16,6 +16,7 @@ public class MusicPlayer extends Thread {
     private boolean allowed = false;
     private boolean record = false;
     private boolean hasBeenOpen = false;
+    private boolean saved = false;
     @Override
     public void run() {
         try {
@@ -53,8 +54,9 @@ public class MusicPlayer extends Thread {
                         else if (record && !seq.isRecording()) {seq.startRecording();}
                         else
                         { 
-                            if (seq.isRecording() && !record) {
+                            if (seq.isRecording() && !record && !saved) {
                                 try {
+                                    saved = true;
                                     java.text.DateFormat dateFormat = new java.text.SimpleDateFormat("_MM_dd_HH_mm_ss");
                                     java.util.Calendar calendar = java.util.Calendar.getInstance();
                                     String result = dateFormat.format(calendar.getTime());

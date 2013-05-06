@@ -37,12 +37,12 @@ public class MusicGenerator extends Thread {
                     states.annEpisode(episodeRepeat);
                     states.decrementTemp();
                 }
+                int[] greedyANN = states.getGreedyANN();
                 float[] greedyRewards = states.getGreedyRewards();
-                int[] greedyAbsolutes = states.getGreedyAbsolutes();
                 for (int j = 0; j < episodeLength; j++) {
                     ws.setReward(n*10 + j, 0, greedyRewards[j]);
                     ws.repaint();
-                    accessNote((short)greedyAbsolutes[j],true);
+                    accessNote((short)greedyANN[j],true);
                 }
                 mc.backUp();
                 System.out.println("Time elapsed: " + Math.round((System.currentTimeMillis()-time)/1000) + " seconds");

@@ -54,7 +54,7 @@ public class StateSpace {
             greedyRewards[i] = mc.assignUtility((byte)greedy[i],false,true);
             greedyAbsolutes[i] = mc.getCurrentNote();
         }
-        return greedy;
+        return greedyAbsolutes;
     }
     
     public int[] getGreedyAbsolutes() {
@@ -75,7 +75,7 @@ public class StateSpace {
             double likelihood2 = weight2*Math.abs(nextLikelihoods[1][(mc.getCurrentNote() + (i-12))%12]);
             double likelihood3 = weight3*Math.abs(nextLikelihoods[2][(int)Math.signum(i-12)+1])/4.4f;
             double dissonance = mc.getDissonance(i);
-            double distance = (mc.getCurrentNote()-64.5)/43.5;
+            double distance = Math.abs(mc.getCurrentNote()-64.5)/43.5;
             double over = (mc.getCurrentNote() + (i-12) > maxNote) ? 1:0;
             double under = (mc.getCurrentNote() + (i-12) < minNote) ? 1:0;
             candidateInputs.addAll(new double[]{likelihood1,likelihood2,likelihood3,dissonance,distance,over,under});
@@ -102,7 +102,7 @@ public class StateSpace {
             double likelihood2 = weight2*Math.abs(nextLikelihoods[1][(mc.getCurrentNote() + (nextaction-12))%12]);
             double likelihood3 = weight3*Math.abs(nextLikelihoods[2][(int)Math.signum(nextaction-12)+1])/4.4f;
             double dissonance = mc.getDissonance((byte)nextaction);
-            double distance = (mc.getCurrentNote()-64.5)/43.5;
+            double distance = Math.abs(mc.getCurrentNote()-64.5)/43.5;
             double over = (mc.getCurrentNote() + (nextaction-12) > maxNote) ? 1:0;
             double under = (mc.getCurrentNote() + (nextaction-12) < minNote) ? 1:0;
             nextinputs.addAll(new double[]{likelihood1,likelihood2,likelihood3,dissonance,distance,over,under});

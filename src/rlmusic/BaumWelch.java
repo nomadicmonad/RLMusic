@@ -186,16 +186,11 @@ public class BaumWelch extends Thread {
                         count++;
                         normalize(outputs);
                     }
-                   while ((Math.abs(estimateOutput-outputMatrix[i][n]) > convergence)
-                        || (Math.abs(estimateTransition-transitions[g][i]) > convergence)
-                            );
-                    
-                    
+                   while ((Math.abs(estimateOutput-outputMatrix[i][n]) > convergence)|| (Math.abs(estimateTransition-transitions[g][i]) > convergence));
                 }
             }
         }
         return forwards[endState][outputs.length-1];
-    
     }
     public void normalize(byte[] outputs) {
         sum = 0;

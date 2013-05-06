@@ -82,8 +82,7 @@ public class MusicCritic extends Thread {
         directionalReward = directional.assignUtility((byte)(Math.signum(emission-12)+1))/4.4f;
             float likelihood = absoluteReward*weight2 + directionalReward*weight3 + relativeReward*weight1;
             utility = (float) (likelihood*(1-(getDissonance(emission)))*getCauch((byte)0));
-            if (!cauchy) utility = (likelihood*(1-(getDissonance(emission))));
-            if (print) System.out.println(likelihood + "  " + getDissonance(emission) + "  " + getCauch((byte) 0));
+            if (print) System.out.println(likelihood + "  " + (1- getDissonance(emission)) + "  " + getCauch((byte) 0));
         if (firstPass) {utility = 0; firstPass = false;}
         if (currentNote > maxNote) {currentNote = (short) maxNote; utility = 0;}
         if (currentNote < minNote) {currentNote = (short) minNote; utility = 0;}
@@ -97,7 +96,7 @@ public class MusicCritic extends Thread {
         inputs[1] = absoluteReward*weight2;
         inputs[2] = directionalReward*weight3;
         inputs[3] = (1-(getDissonance(currentemission)));
-        inputs[4] = (currentNote-64.5)/43.5;
+        inputs[4] = Math.abs(currentNote-64.5)/43.5;
         inputs[5] = (currentNote > maxNote) ? 1 : 0;
         inputs[6] = (currentNote < minNote) ? 1 : 0;
         return inputs;
@@ -106,9 +105,8 @@ public class MusicCritic extends Thread {
     
     public double getCauch(byte emission) {
         double cauchy;
-        double norm = (currentNote + emission - 21)/7.25 - 1.5;
+        double norm = (currentNote + emission - 21)/14.5 - 3;
         cauchy = ((1/Math.PI)*(0.319f/(norm*norm + 0.102f)));
-        
         return cauchy;
     }
     

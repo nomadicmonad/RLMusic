@@ -4,8 +4,8 @@
  */
 package rlmusic;
 
+import static org.junit.Assert.fail;
 import org.junit.*;
-import static org.junit.Assert.*;
 
 /**
  *
